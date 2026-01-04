@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include "quaternions.h"
 #include "vectors.h"
@@ -11,6 +12,9 @@
 void app_main(void)
 
 {
+    const int plot_decimation = 10; // reduce serial spam: 500 Hz / 10 = 50 Hz
+    int plot_counter = 0;
+    const float rad_to_deg = 57.2957795f;
     //Configuration du bus maitre et du périphérique esclave (mpu6050)
     i2c_master_bus_config_t i2cBus = {
         .i2c_port = I2C_NUM_0,
@@ -42,6 +46,11 @@ void app_main(void)
     uint8_t wakeupbuff[2] = {0x6B, 0x00};
     esp_err_t err_wr = i2c_master_transmit(dev_handle, wakeupbuff, 2, 1000);
     if (err_wr == ESP_OK) printf("Réveillé !\n");
+    printf("PLOT_G_HEADER,va_x[u],va_y[u],va_z[u],va_hat_x[u],va_hat_y[u],va_hat_z[u]\n");
+    printf("PLOT_BIAS_HEADER,bias_hat_x[arb],bias_hat_y[arb],bias_hat_z[arb],i_corr_x[rad/s],i_corr_y[rad/s],i_corr_z[rad/s]\n");
+    printf("PLOT_Q_HEADER,q_w[u],q_x[u],q_y[u],q_z[u],q_norm[u]\n");
+    printf("PLOT_SENS_HEADER,accel_x[g],accel_y[g],accel_z[g],gyro_x[rad/s],gyro_y[rad/s],gyro_z[rad/s]\n");
+    printf("PLOT_ERR_HEADER,err_angle_deg[deg],omega_mes_x[arb],omega_mes_y[arb],omega_mes_z[arb]\n");
 
 
     //variables mahony
@@ -76,12 +85,12 @@ void app_main(void)
         xAccelraw = (AccelData[0]<<8) | AccelData[1] ;
         yAccelraw = (AccelData[2]<<8) | AccelData[3] ;
         zAccelraw = (AccelData[4]<<8) | AccelData[5] ;
-        sensors.accel.x    = xAccelraw / 16384.0f;
+        sensors.accel.x    = xAccelraw / 16384.0f ;
         sensors.accel.y    = yAccelraw / 16384.0f ;
         sensors.accel.z    = zAccelraw / 16384.0f ;
-        i2c_master_transmit_receive(dev_handle, &GyroReg,1, GyroData, 6,100);
+        i2c_master_transmit_receive(dev_handle, &GyroReg,1, GyroData, 6,100) ;
         xGyroraw  = (GyroData[0] << 8 ) | GyroData[1] ;
-        yGyroraw  = (GyroData[2] << 8 ) | GyroData[3];
+        yGyroraw  = (GyroData[2] << 8 ) | GyroData[3] ;
         zGyroraw  = (GyroData[4] << 8 ) | GyroData[5] ;
         sensors.gyro.x     =  (xGyroraw / 131.0f)*(2*3.14159/360) ;
         sensors.gyro.y     =  (yGyroraw / 131.0f)*(2*3.14159/360) ;
@@ -98,7 +107,6 @@ void app_main(void)
         q_hat_conj = quat_conj(mahony.q_hat) ;
         quat_temp = quat_mul(q_hat_conj, mahony.e3) ;
         va_hat_quat = quat_mul(quat_temp,mahony.q_hat);
-        printf("va_hat x = %f | va_hat y = %f | va_hat_z = %f \n",va_hat_quat.x, va_hat_quat.y, va_hat_quat.z );
         //printf("va x = %f | va y = %f | va_z = %f \n",mahony.va.x, mahony.va.y, mahony.va.z);
         //calculer l'erreur omeag mes
         va_skew_matrix = get_skew_mat(mahony.va) ;
@@ -127,6 +135,41 @@ void app_main(void)
         mahony.q_hat.y = mahony.q_hat.y + q_hat_dot.y*delta_t ;
         mahony.q_hat.z = mahony.q_hat.z + q_hat_dot.z*delta_t ;
         mahony.q_hat   = quat_normalize(mahony.q_hat) ;
+
+
+        //partie plot
+
+        if ((plot_counter++ % plot_decimation) == 0) {
+            float q_norm = sqrtf(
+                mahony.q_hat.w * mahony.q_hat.w +
+                mahony.q_hat.x * mahony.q_hat.x +
+                mahony.q_hat.y * mahony.q_hat.y +
+                mahony.q_hat.z * mahony.q_hat.z);
+            float va_dot = mahony.va.x * va_hat.x +
+                           mahony.va.y * va_hat.y +
+                           mahony.va.z * va_hat.z;
+            if (va_dot > 1.0f) va_dot = 1.0f;
+            if (va_dot < -1.0f) va_dot = -1.0f;
+            float err_angle_deg = acosf(va_dot) * rad_to_deg;
+            float i_corr_x = mahony.kI * bias_hat.x;
+            float i_corr_y = mahony.kI * bias_hat.y;
+            float i_corr_z = mahony.kI * bias_hat.z;
+
+            printf("PLOT_G,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                   mahony.va.x, mahony.va.y, mahony.va.z,
+                   va_hat.x, va_hat.y, va_hat.z);
+            printf("PLOT_BIAS,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                   bias_hat.x, bias_hat.y, bias_hat.z,
+                   i_corr_x, i_corr_y, i_corr_z);
+            printf("PLOT_Q,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                   mahony.q_hat.w, mahony.q_hat.x, mahony.q_hat.y,
+                   mahony.q_hat.z, q_norm);
+            printf("PLOT_SENS,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                   sensors.accel.x, sensors.accel.y, sensors.accel.z,
+                   sensors.gyro.x, sensors.gyro.y, sensors.gyro.z);
+            printf("PLOT_ERR,%.6f,%.6f,%.6f,%.6f\n",
+                   err_angle_deg, omega_mes.x, omega_mes.y, omega_mes.z);
+        }
         vTaskDelay(pdMS_TO_TICKS(2)) ;
     }
     
