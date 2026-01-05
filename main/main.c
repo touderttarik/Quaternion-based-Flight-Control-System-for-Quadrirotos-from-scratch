@@ -7,6 +7,9 @@
 #include "freertos/FreeRTOS.h"
 #include "driver/i2c_master.h"
 
+#define MPU6050_ADD 0x68
+#define WAKEUP_VAL 0x00
+#define REGISTERS_ADD 0x3B
 //But du filtre : estimer R et estimer b pour corriger le gyro
 
 void app_main(void)
@@ -15,6 +18,7 @@ void app_main(void)
     const int plot_decimation = 10; // reduce serial spam: 500 Hz / 10 = 50 Hz
     int plot_counter = 0;
     const float rad_to_deg = 57.2957795f;
+    const float deg_to_rad = M_PI/180.f;
     //Configuration du bus maitre et du périphérique esclave (mpu6050)
     i2c_master_bus_config_t i2cBus = {
         .i2c_port = I2C_NUM_0,
@@ -31,7 +35,7 @@ void app_main(void)
 
     i2c_device_config_t i2cdev = {
         .dev_addr_length = I2C_ADDR_BIT_7,
-        .device_address = 0x68,
+        .device_address = MPU6050_ADD,
         .scl_speed_hz = 400000,
         .scl_wait_us = 10
     };
@@ -43,9 +47,8 @@ void app_main(void)
         vec3_t accel;
     } sensor_data_t ;
     //Réveiller le capteur
-    uint8_t wakeupbuff[2] = {0x6B, 0x00};
-    esp_err_t err_wr = i2c_master_transmit(dev_handle, wakeupbuff, 2, 1000);
-    if (err_wr == ESP_OK) printf("Réveillé !\n");
+    uint8_t wakeupbuff[2] = {MPU6050_ADD, WAKEUP_VAL};
+    i2c_master_transmit(dev_handle, wakeupbuff, 2, 1000);
     printf("PLOT_G_HEADER,va_x[u],va_y[u],va_z[u],va_hat_x[u],va_hat_y[u],va_hat_z[u]\n");
     printf("PLOT_BIAS_HEADER,bias_hat_x[arb],bias_hat_y[arb],bias_hat_z[arb],i_corr_x[rad/s],i_corr_y[rad/s],i_corr_z[rad/s]\n");
     printf("PLOT_Q_HEADER,q_w[u],q_x[u],q_y[u],q_z[u],q_norm[u]\n");
@@ -56,7 +59,7 @@ void app_main(void)
     //variables mahony
     mahony_t mahony ;
     mahony_init(&mahony) ;
-    float delta_t = 0.002 ; //mesure toutes les 0.002 seconde (boucle à 500 Hz)
+    float delta_t = 0.002f ; //mesure toutes les 0.002 seconde (boucle à 500 Hz)
     sensor_data_t sensors= {0};
     quat_t q_hat_dot = quat_make (0, 0, 0, 0) ;
     quat_t va_quat = quat_make(0, mahony.va.x, mahony.va.y, mahony.va.z);
@@ -64,12 +67,13 @@ void app_main(void)
     quat_t quat_temp = quat_make(0,0,0,0) ;// sera utilisé pour la partie gauche du sandwich
     vec3_t va_hat = {0} ;
     quat_t va_hat_quat = quat_make(0,0,0,0) ;// exprimé le vecteur prédiction sous forme de quaternion
-    matrix_t va_skew_matrix ; //pour éviter de faire un cross product à la formule longue et comliquée
     vec3_t omega_mes ; //erreur prédiction-mesure capeur (un vecteur normal au plan de va_hat et va)
     vec3_t omega ; //vitesse du gyro corrigée (inclut la lecture du gyro Omega_y, le bias prédit et l'erreur)
     quat_t q_pure_omega = quat_make(0, 0, 0, 0) ;//expression de omega sous forme de quaternion pur
     vec3_t bias_hat = {0} ;
+    float R[3][3] = {0} ; //
     //variables de lecture de données
+    uint8_t DataReg = REGISTERS_ADD ;
     uint8_t AccelReg = 0x3B ;
     uint8_t GyroReg = 0x43 ;
     int16_t xAccelraw = 0 ;
@@ -78,24 +82,19 @@ void app_main(void)
     int16_t xGyroraw = 0 ;
     int16_t yGyroraw = 0 ;
     int16_t zGyroraw = 0 ;
-    uint8_t AccelData [6] ;
-    uint8_t GyroData [6] ;
+    uint8_t SensorData[14] ;
+    const float raw_accel_const = 1 / 16384.0f;
+    const float raw_gyro_const = deg_to_rad / 131.0f;
     for(;;){
-        i2c_master_transmit_receive(dev_handle, &AccelReg, 1, AccelData, 6, 100);
-        xAccelraw = (AccelData[0]<<8) | AccelData[1] ;
-        yAccelraw = (AccelData[2]<<8) | AccelData[3] ;
-        zAccelraw = (AccelData[4]<<8) | AccelData[5] ;
-        sensors.accel.x    = xAccelraw / 16384.0f ;
-        sensors.accel.y    = yAccelraw / 16384.0f ;
-        sensors.accel.z    = zAccelraw / 16384.0f ;
-        i2c_master_transmit_receive(dev_handle, &GyroReg,1, GyroData, 6,100) ;
-        xGyroraw  = (GyroData[0] << 8 ) | GyroData[1] ;
-        yGyroraw  = (GyroData[2] << 8 ) | GyroData[3] ;
-        zGyroraw  = (GyroData[4] << 8 ) | GyroData[5] ;
-        sensors.gyro.x     =  (xGyroraw / 131.0f)*(2*3.14159/360) ;
-        sensors.gyro.y     =  (yGyroraw / 131.0f)*(2*3.14159/360) ;
-        sensors.gyro.z     =  (zGyroraw / 131.0f)*(2*3.14159/360) ;        
+        i2c_master_transmit_receive_async(dev_handle, &DataReg, 1, SensorData, 14, NULL);
         
+        sensors.accel.x = ((int16_t)((SensorData[0] << 8) | SensorData[1])) * raw_accel_const;
+        sensors.accel.y = ((int16_t)((SensorData[2] << 8) | SensorData[3])) * raw_accel_const;
+        sensors.accel.z = ((int16_t)((SensorData[4] << 8) | SensorData[5])) * raw_accel_const;
+        
+        sensors.gyro.x = ((int16_t)((SensorData[8] << 8) | SensorData[9])) * raw_gyro_const;
+        sensors.gyro.y = ((int16_t)((SensorData[10] << 8) | SensorData[11])) * raw_gyro_const;
+        sensors.gyro.z = ((int16_t)((SensorData[12] << 8) | SensorData[13])) * raw_gyro_const;
         
         //normaliser va
         mahony.va.x = sensors.accel.x ;
@@ -109,11 +108,10 @@ void app_main(void)
         va_hat_quat = quat_mul(quat_temp,mahony.q_hat);
         //printf("va x = %f | va y = %f | va_z = %f \n",mahony.va.x, mahony.va.y, mahony.va.z);
         //calculer l'erreur omeag mes
-        va_skew_matrix = get_skew_mat(mahony.va) ;
         va_hat.x = va_hat_quat.x ;
         va_hat.y = va_hat_quat.y ;
         va_hat.z = va_hat_quat.z ;
-        omega_mes = mat_vec_prod(va_skew_matrix, va_hat) ;
+        omega_mes = cross_prod(mahony.va, va_hat) ;
         bias_hat.x = bias_hat.x - omega_mes.x ;
         bias_hat.y = bias_hat.y - omega_mes.y ;
         bias_hat.z = bias_hat.z - omega_mes.z ;
@@ -127,9 +125,9 @@ void app_main(void)
         q_pure_omega.z = omega.z ;
         //mise à jour du quaternion orientation 
         q_hat_dot = quat_mul(mahony.q_hat,q_pure_omega) ;
-        q_hat_dot.x = q_hat_dot.x/2;
-        q_hat_dot.y = q_hat_dot.y/2;
-        q_hat_dot.z = q_hat_dot.z/2;
+        q_hat_dot.x = q_hat_dot.x * 0.5f ;
+        q_hat_dot.y = q_hat_dot.y * 0.5f ;
+        q_hat_dot.z = q_hat_dot.z * 0.5f ;
         //intégrer
         mahony.q_hat.x = mahony.q_hat.x + q_hat_dot.x*delta_t ;
         mahony.q_hat.y = mahony.q_hat.y + q_hat_dot.y*delta_t ;

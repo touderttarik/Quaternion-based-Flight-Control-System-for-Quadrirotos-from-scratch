@@ -21,7 +21,7 @@ matrix_t get_skew_mat(vec3_t v){
 vec3_t mat_vec_prod (matrix_t mat, vec3_t v){
 
     float v_array_for_looping[3] = {v.x, v.y, v.z};
-    float prod_for_looping[3]    = {0 ,0 ,0};
+    float prod_for_looping[3]    = {.0f ,.0f ,.0f};
     vec3_t prod ;
     for(uint8_t i=0;i<3;i++){
         for(uint8_t j=0;j<3;j++){

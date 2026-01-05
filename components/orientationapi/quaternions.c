@@ -12,7 +12,7 @@ quat_t quat_make(float w, float x, float y, float z){
 
 float quat_norm2(quat_t q) {
     float q_norm ;
-    q_norm = sqrt(pow(q.w,2) + pow(q.x,2) + pow(q.y, 2) + pow(q.z, 2));
+    q_norm = sqrtf(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
     return q_norm ;
 }
 
@@ -39,11 +39,14 @@ quat_t quat_mul(quat_t a, quat_t b){
 quat_t quat_normalize (quat_t q){
 /*Utilité de la normalisaion :
 */
+    //le choix d'utiliser inverse_norm au lieu de norm est dans le but de profiter
+    //de la FPU de l'esp32 qui fait des multiplications en un cycle
+    //la division étant très lente sur esp32
     quat_t normalized_quat ;
-    float norm = quat_norm2(q);
-    normalized_quat.w = q.w / norm ;
-    normalized_quat.x = q.x / norm ; 
-    normalized_quat.y = q.y / norm ;
-    normalized_quat.z = q.z / norm ;
+    float inverse_norm = 1.0f/quat_norm2(q);
+    normalized_quat.w = q.w*inverse_norm ;
+    normalized_quat.x = q.x*inverse_norm ; 
+    normalized_quat.y = q.y*inverse_norm ;
+    normalized_quat.z = q.z*inverse_norm ;
     return normalized_quat ;
 }

@@ -2,7 +2,7 @@
 #define ORIENTATIONAPI_MAHONY_H
 
 #include "quaternions.h"
-
+#include "matrix.h"
 typedef struct {
     quat_t q_hat;     // peut etre initialise a 1 (repere drone confondu avec repere monde)
     vec3_t omega_y;   // initialise avec sensor.gyro peut etre
@@ -15,8 +15,11 @@ typedef struct {
     vec3_t va;        // gravite mesuree par l'accelerometre
     vec3_t va_hat;    // prediction de la gravite (ce qu'on devrait mesurer)
     float gyro_error;
+    matrix_t rot_mat;   // matrice de rotation associée au quaternion q_hat
 } mahony_t;
 
 void mahony_init(mahony_t *mahony);
+void mahony_update();
+
 
 #endif /* ORIENTATIONAPI_MAHONY_H */
