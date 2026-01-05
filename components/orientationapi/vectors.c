@@ -1,3 +1,25 @@
+/**
+ * get_vect_norm - Calculate the Euclidean norm of a 3D vector
+ * @v: The input vector
+ *
+ * Return: The magnitude (length) of the vector
+ */
+
+/**
+ * vect_normalize - Normalize a 3D vector to unit length
+ * @v: Pointer to the vector to normalize
+ *
+ * Modifies the vector in-place to have a magnitude of 1.
+ * Does nothing if v is NULL or if the vector norm is zero.
+ */
+
+/**
+ * cross_prod - Compute the cross product of two 3D vectors
+ * @u: The first input vector
+ * @v: The second input vector
+ *
+ * Return: A new vector representing the cross product of u and v
+ */
 #include "vectors.h"
 #include <math.h>
 

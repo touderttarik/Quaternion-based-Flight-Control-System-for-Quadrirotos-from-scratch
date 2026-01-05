@@ -1,3 +1,72 @@
+/**
+ * @file quaternions.c
+ * @brief Quaternion mathematics library for 3D rotations and orientations.
+ * 
+ * This module provides fundamental quaternion operations including creation,
+ * normalization, conjugation, and multiplication. Quaternions are used to
+ * represent 3D rotations efficiently and avoid gimbal lock issues.
+ */
+
+/**
+ * @brief Creates a quaternion with specified components.
+ * 
+ * @param w The scalar (real) component of the quaternion
+ * @param x The x-component of the vector part
+ * @param y The y-component of the vector part
+ * @param z The z-component of the vector part
+ * 
+ * @return A quaternion structure with the specified components
+ */
+
+/**
+ * @brief Calculates the norm (magnitude) of a quaternion.
+ * 
+ * Computes the Euclidean norm using the formula: sqrt(w² + x² + y² + z²)
+ * 
+ * @param q The input quaternion
+ * 
+ * @return The norm value of the quaternion
+ */
+
+/**
+ * @brief Computes the conjugate of a quaternion.
+ * 
+ * The conjugate negates the vector part (x, y, z) while keeping the scalar
+ * part (w) unchanged. For unit quaternions, this represents the inverse
+ * rotation and can be interpreted as rotating by angle -theta around axis u,
+ * or by angle theta around axis -u.
+ * 
+ * @param q The input quaternion
+ * 
+ * @return The conjugate quaternion
+ * 
+ * @note Assumes unit quaternions (already normalized)
+ */
+
+/**
+ * @brief Multiplies two quaternions using the Hamilton product.
+ * 
+ * Performs quaternion multiplication which combines two rotations.
+ * Note: Quaternion multiplication is non-commutative (a*b ≠ b*a).
+ * 
+ * @param a The first quaternion operand
+ * @param b The second quaternion operand
+ * 
+ * @return The product quaternion representing the combined rotation
+ */
+
+/**
+ * @brief Normalizes a quaternion to unit length.
+ * 
+ * Scales the quaternion components so that its norm equals 1.
+ * Uses inverse norm calculation and multiplication instead of division
+ * for better performance on ESP32 FPU (single-cycle multiplication vs
+ * slow division).
+ * 
+ * @param q The input quaternion to normalize
+ * 
+ * @return The normalized unit quaternion
+ */
 #include "quaternions.h"
 #include "math.h"
 
@@ -36,17 +105,15 @@ quat_t quat_mul(quat_t a, quat_t b){
     return q_prod ;
 }
 
-quat_t quat_normalize (quat_t q){
+void quat_normalize (quat_t *q){
 /*Utilité de la normalisaion :
 */
     //le choix d'utiliser inverse_norm au lieu de norm est dans le but de profiter
     //de la FPU de l'esp32 qui fait des multiplications en un cycle
     //la division étant très lente sur esp32
-    quat_t normalized_quat ;
-    float inverse_norm = 1.0f/quat_norm2(q);
-    normalized_quat.w = q.w*inverse_norm ;
-    normalized_quat.x = q.x*inverse_norm ; 
-    normalized_quat.y = q.y*inverse_norm ;
-    normalized_quat.z = q.z*inverse_norm ;
-    return normalized_quat ;
+    float inverse_norm = 1.0f/quat_norm2(*q);
+    q->w *= inverse_norm ;
+    q->x *= inverse_norm ; 
+    q->y *= inverse_norm ;
+    q->z *= inverse_norm ;
 }
