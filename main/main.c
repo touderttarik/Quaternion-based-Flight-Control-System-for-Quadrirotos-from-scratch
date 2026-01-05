@@ -62,7 +62,7 @@ void app_main(void)
     float delta_t = 0.002f ; //mesure toutes les 0.002 seconde (boucle à 500 Hz)
     sensor_data_t sensors= {0};
     quat_t q_hat_dot = quat_make (0, 0, 0, 0) ;
-    quat_t va_quat = quat_make(0, mahony.va.x, mahony.va.y, mahony.va.z);
+//    quat_t va_quat = quat_make(0, mahony.va.x, mahony.va.y, mahony.va.z);
     quat_t q_hat_conj = quat_make(0,0,0,0);//init à n'importe quoi
     quat_t quat_temp = quat_make(0,0,0,0) ;// sera utilisé pour la partie gauche du sandwich
     vec3_t va_hat = {0} ;
@@ -76,17 +76,11 @@ void app_main(void)
     uint8_t DataReg = REGISTERS_ADD ;
     uint8_t AccelReg = 0x3B ;
     uint8_t GyroReg = 0x43 ;
-    int16_t xAccelraw = 0 ;
-    int16_t yAccelraw = 0 ;
-    int16_t zAccelraw = 0 ;
-    int16_t xGyroraw = 0 ;
-    int16_t yGyroraw = 0 ;
-    int16_t zGyroraw = 0 ;
     uint8_t SensorData[14] ;
     const float raw_accel_const = 1 / 16384.0f;
     const float raw_gyro_const = deg_to_rad / 131.0f;
     for(;;){
-        i2c_master_transmit_receive_async(dev_handle, &DataReg, 1, SensorData, 14, NULL);
+        i2c_master_transmit_receive(dev_handle, &DataReg, 1, SensorData, 14, 1000);
         
         sensors.accel.x = ((int16_t)((SensorData[0] << 8) | SensorData[1])) * raw_accel_const;
         sensors.accel.y = ((int16_t)((SensorData[2] << 8) | SensorData[3])) * raw_accel_const;

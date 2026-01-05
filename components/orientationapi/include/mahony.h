@@ -19,6 +19,7 @@ typedef struct {
 } mahony_t;
 
 void mahony_init(mahony_t *mahony);
+void NewFunction(mahony_t *mahony);
 void mahony_update();
 
 
