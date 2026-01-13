@@ -9,7 +9,7 @@ import serial
 
 DEFAULT_LABELS = {
     "PLOT_G": "va_x[u],va_y[u],va_z[u],va_hat_x[u],va_hat_y[u],va_hat_z[u]",
-    "PLOT_BIAS": "bias_hat_x[arb],bias_hat_y[arb],bias_hat_z[arb],i_corr_x[rad/s],i_corr_y[rad/s],i_corr_z[rad/s]",
+    "PLOT_BIAS": "b_hat_x[rad/s],b_hat_y[rad/s],b_hat_z[rad/s],b_hat_dot_x[rad/s^2],b_hat_dot_y[rad/s^2],b_hat_dot_z[rad/s^2]",
     "PLOT_Q": "q_w[u],q_x[u],q_y[u],q_z[u],q_norm[u]",
     "PLOT_RPY": "roll[deg],pitch[deg],yaw[deg]",
     "PLOT_SENS": "accel_x[g],accel_y[g],accel_z[g],gyro_x[rad/s],gyro_y[rad/s],gyro_z[rad/s]",
