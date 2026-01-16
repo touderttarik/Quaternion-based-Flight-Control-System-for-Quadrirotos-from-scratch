@@ -62,3 +62,50 @@ void plot_emit(plot_state_t *state, const mahony_t *mahony, const sensor_data_t 
     printf("PLOT_ERR,%.6f,%.6f,%.6f,%.6f\n",
            err_angle_deg, mahony->omega_mes.x, mahony->omega_mes.y, mahony->omega_mes.z);
 }
+
+void plot_ctrl_init(plot_state_t *state, int decimation, float rad_to_deg) {
+    if (!state) {
+        return;
+    }
+    state->decimation = decimation > 0 ? decimation : 1;
+    state->counter = 0;
+    state->rad_to_deg = rad_to_deg;
+
+    printf("PLOT_PID_Q_HEADER,q_err_w[u],q_err_x[u],q_err_y[u],q_err_z[u]\n");
+    printf("PLOT_PID_V_HEADER,v_err_x[deg],v_err_y[deg],v_err_z[deg]\n");
+    printf("PLOT_PID_RATE_HEADER,omega_sp_x[rad/s],omega_sp_y[rad/s],omega_sp_z[rad/s],omega_err_x[rad/s],omega_err_y[rad/s],omega_err_z[rad/s]\n");
+    printf("PLOT_PID_I_HEADER,iomega_err_x[rad],iomega_err_y[rad],iomega_err_z[rad]\n");
+    printf("PLOT_PID_U_HEADER,u_x[arb],u_y[arb],u_z[arb]\n");
+    printf("PLOT_MIX_HEADER,f1[u],f2[u],f3[u],f4[u]\n");
+    printf("PLOT_PWM_HEADER,pwm_1[us],pwm_2[us],pwm_3[us],pwm_4[us]\n");
+}
+
+void plot_ctrl_emit(plot_state_t *state, const pid_struct_t *pid, const mix_t *mix) {
+    if (!state || !pid || !mix) {
+        return;
+    }
+    if ((state->counter++ % state->decimation) != 0) {
+        return;
+    }
+
+    float v_err_x_deg = pid->v_err.x * state->rad_to_deg;
+    float v_err_y_deg = pid->v_err.y * state->rad_to_deg;
+    float v_err_z_deg = pid->v_err.z * state->rad_to_deg;
+
+    printf("PLOT_PID_Q,%.6f,%.6f,%.6f,%.6f\n",
+           pid->q_err.w, pid->q_err.x, pid->q_err.y, pid->q_err.z);
+    printf("PLOT_PID_V,%.6f,%.6f,%.6f\n",
+           v_err_x_deg, v_err_y_deg, v_err_z_deg);
+    printf("PLOT_PID_RATE,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+           pid->omega_sp.x, pid->omega_sp.y, pid->omega_sp.z,
+           pid->omega_err.x, pid->omega_err.y, pid->omega_err.z);
+    printf("PLOT_PID_I,%.6f,%.6f,%.6f\n",
+           pid->Iomega_err.x, pid->Iomega_err.y, pid->Iomega_err.z);
+    printf("PLOT_PID_U,%.6f,%.6f,%.6f\n",
+           pid->u.x, pid->u.y, pid->u.z);
+    printf("PLOT_MIX,%.6f,%.6f,%.6f,%.6f\n",
+           mix->f1, mix->f2, mix->f3, mix->f4);
+    printf("PLOT_PWM,%.0f,%.0f,%.0f,%.0f\n",
+           (double)mix->pwm_1, (double)mix->pwm_2,
+           (double)mix->pwm_3, (double)mix->pwm_4);
+}

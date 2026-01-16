@@ -12,7 +12,7 @@ typedef struct {
     float Kp ;
     float Ki ;
     float Kd ;
-    vec3_t u ;
+    vec3_t u ; //Contains the desired moments around the x, y and z axis
 }pid_struct_t ;
 
 

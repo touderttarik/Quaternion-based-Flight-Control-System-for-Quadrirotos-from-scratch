@@ -14,6 +14,13 @@ DEFAULT_LABELS = {
     "PLOT_RPY": "roll[deg],pitch[deg],yaw[deg]",
     "PLOT_SENS": "accel_x[g],accel_y[g],accel_z[g],gyro_x[rad/s],gyro_y[rad/s],gyro_z[rad/s]",
     "PLOT_ERR": "err_angle_deg[deg],omega_mes_x[arb],omega_mes_y[arb],omega_mes_z[arb]",
+    "PLOT_PID_Q": "q_err_w[u],q_err_x[u],q_err_y[u],q_err_z[u]",
+    "PLOT_PID_V": "v_err_x[deg],v_err_y[deg],v_err_z[deg]",
+    "PLOT_PID_RATE": "omega_sp_x[rad/s],omega_sp_y[rad/s],omega_sp_z[rad/s],omega_err_x[rad/s],omega_err_y[rad/s],omega_err_z[rad/s]",
+    "PLOT_PID_I": "iomega_err_x[rad],iomega_err_y[rad],iomega_err_z[rad]",
+    "PLOT_PID_U": "u_x[arb],u_y[arb],u_z[arb]",
+    "PLOT_MIX": "f1[u],f2[u],f3[u],f4[u]",
+    "PLOT_PWM": "pwm_1[us],pwm_2[us],pwm_3[us],pwm_4[us]",
     "PLOT": "err_angle_deg[deg],accel_mag[g],gyro_norm[rad/s],p_corr_norm[rad/s],i_corr_norm[rad/s],q_norm",
 }
 

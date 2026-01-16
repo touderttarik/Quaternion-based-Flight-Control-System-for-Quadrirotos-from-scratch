@@ -6,9 +6,9 @@
 void pid_init(pid_struct_t *pid){
     pid->q_err = quat_make(.0f, .0f, .0f, .0f) ;
     pid->Kr = 1.0f ;
-    pid->Kp = 0.1f ;
-    pid->Ki = 0.0f ;
-    pid->Kd = 0.0f ;
+    pid->Kp = 0.2f ; //Muscle
+    pid->Ki = 0.0f ; //The memory
+    pid->Kd = 0.0f ; //The shock absorber. CAUTION : A too high value of Kd will damage the motors.
 }
 
 void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float inverse_delta_t, sensor_data_t *sensors){
@@ -34,7 +34,7 @@ void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float invers
     pid->omega_sp.y = pid->Kr*pid->v_err.y ;
     pid->omega_sp.z = pid->Kr*pid->v_err.z ;
     
-    //rate loop : CAUTION MAYBE ERROR IN THE SIGNS (CONVERSION TO FRD ERROR)
+    //rate loop : CAUTION (CONVERSION TO FRD)
     pid->omega_err.x = pid->omega_sp.x - sensors->gyro.x ; 
     pid->omega_err.y = pid->omega_sp.y + sensors->gyro.y ; //+ because of the FLU to FRD conversion
     pid->omega_err.z = pid->omega_sp.z + sensors->gyro.z ; //+ because of the FLU to FRD conversion
