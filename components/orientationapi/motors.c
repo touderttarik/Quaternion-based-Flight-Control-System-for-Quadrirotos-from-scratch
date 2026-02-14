@@ -33,7 +33,7 @@ void motors_init(uint8_t motor1_pin, uint8_t motor2_pin, uint8_t motor3_pin, uin
     mcpwm_oper_handle_t oper_2 = NULL;
     mcpwm_new_operator(&operator_config_2, &oper_2);
 
-    //Now we connect timer1 to oper1 and timer2 to oper2
+    //Now we connect the operators to the same timer
     mcpwm_operator_connect_timer(oper_1, timer) ;//for the left motors
     mcpwm_operator_connect_timer(oper_2, timer) ;//for the right motors
     

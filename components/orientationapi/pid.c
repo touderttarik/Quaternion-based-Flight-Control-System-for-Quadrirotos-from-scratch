@@ -7,14 +7,15 @@ void pid_init(pid_struct_t *pid){
     pid->q_err = quat_make(.0f, .0f, .0f, .0f) ;
     pid->Kr = 1.0f ;
     pid->Kp = 0.2f ; //Muscle
-    pid->Ki = 0.0f ; //The memory
-    pid->Kd = 0.0f ; //The shock absorber. CAUTION : A too high value of Kd will damage the motors.
+    pid->Ki = 0.0001f ; //The memory
+    pid->Kd = 0.0001f ; //The shock absorber. CAUTION : A too high value of Kd will damage the motors.
 }
 
-void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float inverse_delta_t, sensor_data_t *sensors){
-    quat_t q_sp = IDENTITY_QUAT ;
-    //Calculating the error by supposing that we simply want the drone to hover at its initial position
-    pid->q_err = quat_mul(quat_conj(mahony->q_hat),q_sp) ;
+void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float inverse_delta_t,
+    sensor_data_t *sensors, quat_t q_sp){
+    quat_normalize(&q_sp);
+    // Calculating the error between current attitude and commanded attitude.
+    pid->q_err = quat_mul(q_sp, quat_conj(mahony->q_hat));
 
     if(pid->q_err.w < 0){
         pid->q_err.w *= -1.0f ; 
@@ -49,6 +50,6 @@ void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float invers
     pid->u.y = pid->Kp*pid->omega_err.y + pid->Ki*pid->Iomega_err.y + pid->Kd*pid->omega_err.y*inverse_delta_t ;
     pid->u.z = pid->Kp*pid->omega_err.z + pid->Ki*pid->Iomega_err.z + pid->Kd*pid->omega_err.z*inverse_delta_t ;
 
-    printf("[%.02f,%.02f,%.02f,%.02f]\n",pid->q_err.w,pid->q_err.x, pid->q_err.y, pid->q_err.z) ;
-    printf("axis : [%0.2f,%0.2f,%0.2f], angle = %.02f rad\n",axis_angle.axis.x,axis_angle.axis.y,axis_angle.axis.z,axis_angle.angle) ;
+   // printf("[%.02f,%.02f,%.02f,%.02f]\n",pid->q_err.w,pid->q_err.x, pid->q_err.y, pid->q_err.z) ;
+    //printf("axis : [%0.2f,%0.2f,%0.2f], angle = %.02f rad\n",axis_angle.axis.x,axis_angle.axis.y,axis_angle.axis.z,axis_angle.angle) ;
 }

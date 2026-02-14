@@ -14,6 +14,6 @@ typedef struct {
 } mix_t;
 
 float clamp(float n, float min, float max) ;
-void mix_update(pid_struct_t *pid, mix_t *mix) ;
+void mix_update(pid_struct_t *pid, mix_t *mix, float throttle) ;
 
 #endif

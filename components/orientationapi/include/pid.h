@@ -17,6 +17,7 @@ typedef struct {
 
 
 void pid_init(pid_struct_t *pid);
-void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float inverse_delta_t, sensor_data_t *sensors);
+void pid_update(mahony_t *mahony, pid_struct_t *pid, float delta_t, float inverse_delta_t,
+    sensor_data_t *sensors, quat_t q_sp);
 
 #endif

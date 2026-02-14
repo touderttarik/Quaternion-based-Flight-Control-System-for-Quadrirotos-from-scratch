@@ -1,66 +1,74 @@
-#include "sensors.h"
-#include "mahony.h"
-#include "plot.h"
-#include "pid.h"
-#include "mix.h"
-#include "motors.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "link_layer.h"
+#include "transport_layer.h"
+#include "sensors.h"
+#include "motors.h"
+#include "mahony.h"
+#include "pid.h"
+#include "mix.h"
+
+
 
 #define SCL_GPIO 22
 #define SDA_GPIO 21
 #define I2C_FREQ_HZ 400000
-#define PWM1_GPIO 32//motor 1
-#define PWM2_GPIO 25//motor 2
-#define PWM3_GPIO 26//motor 3
-#define PWM4_GPIO 33//motor 4
+
+#define PWM1_GPIO 16
+#define PWM2_GPIO 18
+#define PWM3_GPIO 13
+#define PWM4_GPIO 14
+
+static const char *TAG = "DRONE MAIN APP";
+SemaphoreHandle_t hello_sem = NULL;
+SemaphoreHandle_t arm_seq_sem = NULL;
+
+static const quat_t k_level_setpoint = {1.0f, 0.0f, 0.0f, 0.0f};
+static const float k_throttle = 0.0f;
+
+
 
 void app_main(void)
 {
-    plot_state_t plot_state;
-
-    plot_state_t plot_ctrl_state;
-    plot_init(&plot_state, 10, 57.2957795f);
-
-    plot_ctrl_init(&plot_ctrl_state, 10, 57.2957795f);
+    ESP_LOGI(TAG, "Boot");
+    wifi_init_softap();
+    // INITIALISATION obligatoire avant de créer la tâche
+    hello_sem = xSemaphoreCreateBinary() ;
+    arm_seq_sem = xSemaphoreCreateBinary() ;
+    if (hello_sem != NULL) {
+        xTaskCreate(transport_task, "udp_server_task", 4096, NULL, 5, NULL);
+        // Blocage du main jusqu'au "Give" dans udp_task.c
+        ESP_LOGI(TAG, "Waiting for Hello Drone.");
+        xSemaphoreTake(hello_sem, portMAX_DELAY);
+        ESP_LOGI(TAG, "Le main continue !");
+    }
     
-    // Initialize I2C Bus and configure the MPU to +/- 8g and 1000 deg/s
+    if(arm_seq_sem != NULL){
+        xSemaphoreTake(arm_seq_sem, portMAX_DELAY);
+    }
+
     mpu6050_init(SCL_GPIO, SDA_GPIO, I2C_FREQ_HZ);
+    motors_init(PWM1_GPIO, PWM2_GPIO, PWM3_GPIO, PWM4_GPIO);
 
-    //Initialize the MCPWM generator
-    motors_init(PWM1_GPIO, PWM2_GPIO, PWM3_GPIO, PWM4_GPIO) ;
-
-    // Initialize Mahony filter state
-    mahony_t mahony ;
-    pid_struct_t pid ;
-    mix_t mix ;
+    mahony_t mahony;
+    pid_struct_t pid;
+    mix_t mix;
     mahony_init(&mahony);
     pid_init(&pid);
-    // Sampling period: 2ms for 500Hz loop frequency
-    float delta_t = 0.002f;
-    float inverse_delta_t = 1/delta_t ; //for the sake of optimization we calculate this inverse once and use it at pid() call
+
+    const float delta_t = 0.002f;
+    const float inverse_delta_t = 1.0f / delta_t;
     sensor_data_t sensors = {0};
-    
-    // Main control loop
-    for(;;) {
-        
-        //Read the control commands from the remote
-//      read_remote() ;
+
+    for (;;) {
         read_sensors(&sensors);
-        //Here occurs the magic of the Mahony filter
-        mahony_update(&mahony, &sensors, delta_t) ;
-        //plot_emit(&plot_state, &mahony, &sensors);//Plot Mahony data
-        
-        pid_update(&mahony, &pid, delta_t, inverse_delta_t, &sensors) ;
-        
-        mix_update(&pid, &mix) ;
-        
-        write_motors(&mix) ;
-        
-        
-        plot_ctrl_emit(&plot_ctrl_state, &pid, &mix);
-        // Delay 2ms to maintain 500Hz control loop frequency
-        //I have to pay attention to the real duration of my loop.
+        mahony_update(&mahony, &sensors, delta_t);
+
+        pid_update(&mahony, &pid, delta_t, inverse_delta_t, &sensors, k_level_setpoint);
+        mix_update(&pid, &mix, k_throttle);
+        write_motors(&mix);
+
         vTaskDelay(pdMS_TO_TICKS(2));
     }
 }

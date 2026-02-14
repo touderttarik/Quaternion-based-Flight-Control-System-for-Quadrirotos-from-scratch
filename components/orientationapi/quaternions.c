@@ -157,6 +157,65 @@ axis_angle_t quat_to_axis_angle(quat_t q){
     return axis_angle;
 }
 
+quat_t quat_inverse_unit(quat_t q)
+{
+    return quat_conj(q);
+}
+
+quat_t quat_from_axis_angle(vec3_t axis_unit, float theta_rad)
+{
+    float half = 0.5f * theta_rad;
+    float s = sinf(half);
+    quat_t q;
+    q.w = cosf(half);
+    q.x = axis_unit.x * s;
+    q.y = axis_unit.y * s;
+    q.z = axis_unit.z * s;
+    return q;
+}
+
+void quat_to_rotmat(quat_t q, float R[3][3])
+{
+    float ww = q.w * q.w;
+    float xx = q.x * q.x;
+    float yy = q.y * q.y;
+    float zz = q.z * q.z;
+    float wx = q.w * q.x;
+    float wy = q.w * q.y;
+    float wz = q.w * q.z;
+    float xy = q.x * q.y;
+    float xz = q.x * q.z;
+    float yz = q.y * q.z;
+
+    R[0][0] = ww + xx - yy - zz;
+    R[0][1] = 2.0f * (xy - wz);
+    R[0][2] = 2.0f * (xz + wy);
+
+    R[1][0] = 2.0f * (xy + wz);
+    R[1][1] = ww - xx + yy - zz;
+    R[1][2] = 2.0f * (yz - wx);
+
+    R[2][0] = 2.0f * (xz - wy);
+    R[2][1] = 2.0f * (yz + wx);
+    R[2][2] = ww - xx - yy + zz;
+}
+
+vec3_t rotmat_apply(const float R[3][3], vec3_t v)
+{
+    vec3_t out;
+    out.x = R[0][0] * v.x + R[0][1] * v.y + R[0][2] * v.z;
+    out.y = R[1][0] * v.x + R[1][1] * v.y + R[1][2] * v.z;
+    out.z = R[2][0] * v.x + R[2][1] * v.y + R[2][2] * v.z;
+    return out;
+}
+
+vec3_t quat_rotate_vec(quat_t q_unit, vec3_t v)
+{
+    float R[3][3];
+    quat_to_rotmat(q_unit, R);
+    return rotmat_apply(R, v);
+}
+
 /*vec3_t quat_to_pitch_roll_yaw(quat_t *q) {
     //pitch=arcsin(2(wy−zx))
     //roll=arctan2(2(wx+yz),1−2(x²+y²))
