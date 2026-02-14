@@ -1,0 +1,2 @@
+source /home/yasmine/Projects/quadcopter/drone/build_drone/bootloader/gdbinit/symbols
+source /home/yasmine/Projects/quadcopter/drone/build_drone/bootloader/gdbinit/connect

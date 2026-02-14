@@ -74,8 +74,9 @@ void transport_task(void* pvParameters){
         ESP_LOGI(TAG,"Message received from Remote !") ;
         xSemaphoreGive(hello_sem);
     }
+*/
 
-    closesocket(udp_socket);
-    vTaskDelete(NULL);*/
+    closesocket(tcp_socket);
+    vTaskDelete(NULL);
     
 }
